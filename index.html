@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+</head>
+<body>
+    <audio></audio>
+    <script>
+        const socket = io('localhost:5588');
+        window.onload = () => {
+            var constraints = { audio: true };
+            navigator.mediaDevices.getUserMedia(constraints)
+                .then((mediaStream) => {
+                    var mediaRecorder = new MediaRecorder(mediaStream);
+                    mediaRecorder.onstart = () => {
+                        console.log('start media recorder')
+                        mediaRecorder.chunks = [];
+                    };
+
+                    mediaRecorder.ondataavailable = (e) => {
+                        mediaRecorder.chunks.push(e.data);
+                    };
+
+                    mediaRecorder.onstop = (e) => {
+                        console.log('stop media recorder')
+                        var blob = new Blob(mediaRecorder.chunks, { 'type' : 'audio/ogg; codecs=opus' });
+                        console.log(blob)
+                        socket.emit('radio', blob);
+                    }
+
+                    mediaRecorder.start();
+                    setTimeout(() => {
+                        console.log('STOPED');
+                        mediaRecorder.stop();
+                        mediaRecorder.start();
+                        setInterval(() => {
+                            console.log('STOPED');
+                            mediaRecorder.stop();
+                            mediaRecorder.start();
+                        }, 3000);
+                    }, 500);
+                }).catch((e) => {
+                    console.log(e);
+                });
+
+            socket.on('voice', (buffer) => {
+                console.log('FIND VOICE');
+                var blob = new Blob([buffer], { 'type' : 'audio/ogg; codecs=opus' });
+                var audio = document.querySelector('audio');
+                audio.src = window.URL.createObjectURL(blob);
+                audio.volume = 1;
+                audio.play();
+            })
+        }
+    </script>
+</body>
+</html>
